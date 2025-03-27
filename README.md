@@ -47,6 +47,10 @@ Create or modify the wallets.json file and enter your wallet addresses in this f
 ```
 
 Step 4: (Optional) Add Proxy Support
+## Edit The Code 
+```
+nano code.txt
+```
 
 If you want to use proxies, add them to proxy.txt (one per line). Example:
 
