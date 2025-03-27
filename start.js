@@ -5,22 +5,22 @@ const colors = require('colors');
 
 const BASE_URL = 'https://mscore.onrender.com';
 
-// Load wallets from `wallets.json`
+// 从 `wallets.json` 加载钱包
 let wallets = [];
 if (fs.existsSync('wallets.json')) {
     try {
         const walletData = JSON.parse(fs.readFileSync('wallets.json', 'utf-8'));
         wallets = walletData.map(wallet => wallet.address.trim()).filter(address => address.length > 0);
     } catch (error) {
-        console.log(colors.red(`❌ Error reading wallets.json: ${error.message}`));
+        console.log(colors.red(`❌ 读取 wallets.json 时出错: ${error.message}`));
         process.exit(1);
     }
 } else {
-    console.log(colors.red('❌ wallets.json not found! Please add wallet data.'));
+    console.log(colors.red('❌ 未找到 wallets.json！请添加钱包数据。'));
     process.exit(1);
 }
 
-// Load proxies from `proxy.txt`
+// 从 `proxy.txt` 加载代理
 let proxies = [];
 if (fs.existsSync('proxy.txt')) {
     const proxyLines = fs.readFileSync('proxy.txt', 'utf-8')
@@ -32,19 +32,19 @@ if (fs.existsSync('proxy.txt')) {
         try {
             return new HttpsProxyAgent(proxy);
         } catch (e) {
-            console.log(colors.red(`⚠️ Invalid proxy: ${proxy} - ${e.message}`));
+            console.log(colors.red(`⚠️ 无效代理: ${proxy} - ${e.message}`));
             return null;
         }
     }).filter(proxy => proxy !== null);
 }
 
-// Load logs from `log.json`
+// 从 `log.json` 加载日志
 let logs = [];
 if (fs.existsSync('log.json')) {
     logs = JSON.parse(fs.readFileSync('log.json', 'utf-8'));
 }
 
-// Function to start the node
+// 启动节点的功能
 async function startNode(walletAddress, proxy) {
     const data = {
         wallet: walletAddress,
@@ -64,31 +64,31 @@ async function startNode(walletAddress, proxy) {
         const res = await axios(config);
         return res.data;
     } catch (error) {
-        console.log(colors.red(`❌ Error updating startTime for ${walletAddress}: ${error.message}`));
+        console.log(colors.red(`❌ 更新 ${walletAddress} 的 startTime 时出错: ${error.message}`));
         return null;
     }
 }
 
-// Check if node has already been updated today
+// 检查节点今天是否已更新
 function isNodeUpdated(walletAddress) {
     const today = new Date().toISOString().slice(0, 10); 
     return logs.some(log => log.wallet === walletAddress && log.success && log.timestamp.startsWith(today));
 }
 
-// Process wallets
+// 处理钱包
 async function processWallets() {
     let hasUpdated = false;
 
     for (const walletAddress of wallets) {
         if (isNodeUpdated(walletAddress)) {
-            console.log(colors.yellow(`⏭️ Node already updated for ${walletAddress} today, skipping.`));
+            console.log(colors.yellow(`⏭️ ${walletAddress} 的节点今天已更新，跳过。`));
             continue;
         }
 
         const proxy = proxies[Math.floor(Math.random() * proxies.length)];
         const result = await startNode(walletAddress, proxy);
         if (result?.success) {
-            console.log(colors.green(`✔️ Successfully updated startTime for ${walletAddress}!`));
+            console.log(colors.green(`✔️ 成功更新 ${walletAddress} 的 startTime！`));
 
             logs.push({
                 wallet: walletAddress,
@@ -99,7 +99,7 @@ async function processWallets() {
             fs.writeFileSync('log.json', JSON.stringify(logs, null, 2));
             hasUpdated = true;
         } else {
-            console.log(colors.red(`❌ Failed to update startTime for ${walletAddress}.`));
+            console.log(colors.red(`❌ 无法更新 ${walletAddress} 的 startTime。`));
 
             logs.push({
                 wallet: walletAddress,
@@ -117,7 +117,7 @@ async function processWallets() {
     return hasUpdated;
 }
 
-// Schedule to run daily at 7 AM
+// 安排每天早上7点运行
 async function startNodeDaily() {
     const now = new Date();
     let targetTime = new Date(now.setHours(7, 0, 0, 0)); 
@@ -126,36 +126,36 @@ async function startNodeDaily() {
     }
 
     const delay = targetTime - Date.now();
-    console.log(colors.cyan(`⏳ Waiting until ${targetTime.toLocaleTimeString()} to restart...`));
+    console.log(colors.cyan(`⏳ 等待至 ${targetTime.toLocaleTimeString()} 以重新启动...`));
 
     setTimeout(async () => {
         const hasUpdated = await processWallets();
 
         if (hasUpdated) {
             const extraDelay = getRandomDelay() * 60 * 1000;
-            console.log(colors.cyan(`⏳ Waiting an extra ${extraDelay / 60000} minutes before restarting...`));
+            console.log(colors.cyan(`⏳ 在重新启动前额外等待 ${extraDelay / 60000} 分钟...`));
 
             setTimeout(startNodeDaily, extraDelay);
         }
     }, delay);
 }
 
-// Random delay between 2-10 minutes
+// 获取2-10分钟的随机延迟
 function getRandomDelay() {
     return Math.floor(Math.random() * (10 - 2 + 1)) + 2;
 }
 
-// Run script once and then schedule
+// 先运行一次脚本，然后进行调度
 async function runOnce() {
     const hasUpdated = await processWallets();
 
     if (hasUpdated) {
         await startNodeDaily();
     } else {
-        console.log(colors.cyan("⏳ No wallets to process. Waiting for the next cycle..."));
+        console.log(colors.cyan("⏳ 没有需要处理的钱包。等待下一个周期..."));
         await startNodeDaily();
     }
 }
 
-// Start the script
+// 启动脚本
 runOnce();
