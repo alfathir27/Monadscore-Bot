@@ -51,7 +51,7 @@ npm install
 ```
 
 步骤 4: （可选）添加代理支持
-## 编辑代码
+## 编辑邀请代码
 
 ```bash
 nano code.txt
