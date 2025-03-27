@@ -23,40 +23,5 @@
     "address": "0x7e506A1B276304732b81107dbA01dd95E3eB8950",
     "privateKey": "0x95e0d09bbf2b05911ccd0bb589c3981862a761b1a51abca058fd71b46e051723",
     "createdAt": "2025-03-26T18:01:42.857Z"
-  },
-  {
-    "address": "0x4a0561aFcC2AA6D0bcD3f3d2637b4Eed77F2291f",
-    "privateKey": "0x29985a20163f3cc713dae9f07c5c969415adb2209e64ae7de4f3ea34a6d26dbb",
-    "createdAt": "2025-03-26T18:01:49.984Z"
-  },
-  {
-    "address": "0x817c4d9FbdFF238Bac7e871E287B2eDD9412D37D",
-    "privateKey": "0xbaecab2f35b38ea68940f748f5de13ad394c79fbe48775305f5e32b8a46985ae",
-    "createdAt": "2025-03-26T18:04:31.487Z"
-  },
-  {
-    "address": "0xe30f0c41BCEB752e40d9c9D75e4BF5224B74De6F",
-    "privateKey": "0xc8f1eac926438f76f003a46d076e0f0b6b0d2ea6f2823b7b4bfb89d4a62099f4",
-    "createdAt": "2025-03-26T18:04:39.570Z"
-  },
-  {
-    "address": "0xb0fd6F2ba01EC16976f425c96e9F171F190998eF",
-    "privateKey": "0x9cb0490a27618275b6a975445954e56045872e159415c612dc948f54a615cd14",
-    "createdAt": "2025-03-26T18:04:48.201Z"
-  },
-  {
-    "address": "0x60107297dDa5b01C298D34ec1Ae1806417d9C9A4",
-    "privateKey": "0x1395599839221d22de7fc6bb5dc224d49245b827d1e8134f4b75355149a3ca6e",
-    "createdAt": "2025-03-26T18:22:27.799Z"
-  },
-  {
-    "address": "0xE6433722D3D1f71dBF2423b1d2F48fF881a75ef5",
-    "privateKey": "0x40bfe2941cb6d5d821dc992128425efd259ae9804cd248fdd1b970751f9854e2",
-    "createdAt": "2025-03-26T18:22:31.843Z"
-  },
-  {
-    "address": "0x9458dA48F9C7E8CBa44d15d5a2461370Cf7FA3D4",
-    "privateKey": "0x25432136011e34e5b7a44d052e5d0cefff46c40d28fc8ddef9215d4c458b8cd2",
-    "createdAt": "2025-03-26T23:46:42.716Z"
   }
 ]
