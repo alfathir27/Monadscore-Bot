@@ -7,7 +7,7 @@ const { SocksProxyAgent } = require('socks-proxy-agent');
 const chalk = require('chalk');
 
 // ======================
-// Animation Utilities
+// 动画工具
 // ======================
 const spinnerFrames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
 let spinnerInterval;
@@ -40,23 +40,22 @@ async function typeEffect(text, speed = 2) {
 }
 
 // ======================
-// Animated Banner
+// 动画横幅
 // ======================
 async function printBanner() {
     const bannerText = chalk.cyan(`
 ╔════════════════════════════════════════════════════╗
-║                 MONAD SCORE BOT                    ║
-║       Automate your Monad Score registrations!     ║
-║    Developed by: https://t.me/Offical_Im_kazuha    ║
-║    GitHub: https://github.com/Kazuha787            ║
-╠════════════════════════════════════════════════════╣
 ║                                                    ║
-║  ██╗  ██╗ █████╗ ███████╗██╗   ██╗██╗  ██╗ █████╗  ║
-║  ██║ ██╔╝██╔══██╗╚══███╔╝██║   ██║██║  ██║██╔══██╗ ║
-║  █████╔╝ ███████║  ███╔╝ ██║   ██║███████║███████║ ║
-║  ██╔═██╗ ██╔══██║ ███╔╝  ██║   ██║██╔══██║██╔══██║ ║
-║  ██║  ██╗██║  ██║███████╗╚██████╔╝██║  ██║██║  ██║ ║
-║  ╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝ ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝ ║
+║               ╔═╗╔═╦╗─╔╦═══╦═══╦═══╦═══╗          ║
+║               ╚╗╚╝╔╣║─║║╔══╣╔═╗║╔═╗║╔═╗║          ║
+║               ─╚╗╔╝║║─║║╚══╣║─╚╣║─║║║─║║          ║
+║               ─╔╝╚╗║║─║║╔══╣║╔═╣╚═╝║║─║║          ║
+║               ╔╝╔╗╚╣╚═╝║╚══╣╚╩═║╔═╗║╚═╝║          ║
+║               ╚═╝╚═╩═══╩═══╩═══╩╝─╚╩═══╝          ║
+║         原作者 GitHub: https://github.com/Kazuha787║
+║               关注tg频道：t.me/xuegaoz              ║
+║               我的gihub：github.com/Gzgod          ║
+║               我的推特：推特雪糕战神@Hy78516012       ║
 ║                                                    ║
 ╚════════════════════════════════════════════════════╝
 `);
@@ -68,7 +67,7 @@ async function printBanner() {
 }
 
 // ======================
-// Core Configuration
+// 核心配置
 // ======================
 const BASE_URL = 'https://mscore.onrender.com';
 const MAX_RETRIES = 3;
@@ -77,22 +76,22 @@ let proxies = [];
 const stats = { total: 0, success: 0, failed: 0 };
 
 // ======================
-// Initialization Setup
+// 初始化设置
 // ======================
 function initialize() {
-    // Load referral code
+    // 加载推荐码
     try {
         if (fs.existsSync('code.txt')) {
             REFERRAL_CODE = fs.readFileSync('code.txt', 'utf-8').trim();
-            console.log(chalk.green(`✅ Loaded referral code: ${chalk.yellow(REFERRAL_CODE)}`));
+            console.log(chalk.green(`✅ 已加载推荐码: ${chalk.yellow(REFERRAL_CODE)}`));
         } else {
-            console.log(chalk.yellow('⚠️  code.txt not found - proceeding without referral code'));
+            console.log(chalk.yellow('⚠️ 未找到 code.txt - 将不使用推荐码继续运行'));
         }
     } catch (error) {
-        console.log(chalk.red(`❌ Error reading code.txt: ${error.message}`));
+        console.log(chalk.red(`❌ 读取 code.txt 时出错: ${error.message}`));
     }
 
-    // Load proxies
+    // 加载代理
     if (fs.existsSync('proxies.txt')) {
         proxies = fs.readFileSync('proxies.txt', 'utf-8')
             .split('\n')
@@ -102,27 +101,27 @@ function initialize() {
                 try {
                     const proxyRegex = /^(http|socks4|socks5):\/\/(?:([^:]+):([^@]+)@)?([^:]+):(\d+)$/;
                     const match = proxy.match(proxyRegex);
-                    if (!match) throw new Error('Invalid proxy format');
+                    if (!match) throw new Error('代理格式无效');
 
                     const [, type, username, password, host, port] = match;
                     const encodedUsername = encodeURIComponent(username || '');
                     const encodedPassword = encodeURIComponent(password || '');
                     return `${type}://${encodedUsername}:${encodedPassword}@${host}:${port}`;
                 } catch (e) {
-                    console.log(chalk.red(`⏭️  Skipping invalid proxy: ${proxy} - ${e.message}`));
+                    console.log(chalk.red(`⏭️ 跳过无效代理: ${proxy} - ${e.message}`));
                     return null;
                 }
             })
             .filter(proxy => proxy !== null);
 
-        console.log(chalk.green(`✅ Loaded ${chalk.yellow(proxies.length)} valid proxies`));
+        console.log(chalk.green(`✅ 已加载 ${chalk.yellow(proxies.length)} 个有效代理`));
     } else {
-        console.log(chalk.yellow('⚠️  proxies.txt not found - proceeding without proxies'));
+        console.log(chalk.yellow('⚠️ 未找到 proxies.txt - 将不使用代理继续运行'));
     }
 }
 
 // ======================
-// Proxy Management
+// 代理管理
 // ======================
 function getRandomProxy() {
     if (proxies.length === 0) return null;
@@ -147,7 +146,7 @@ async function testProxy(proxyUrl) {
 }
 
 // ======================
-// Core Functionality
+// 核心功能
 // ======================
 function generateWallet() {
     return ethers.Wallet.createRandom();
@@ -167,7 +166,7 @@ async function makeRequest(method, endpoint, data) {
 
             try {
                 if (!await testProxy(proxyUrl)) {
-                    console.log(chalk.red(`❌ Proxy ${proxyUrl} failed test - skipping`));
+                    console.log(chalk.red(`❌ 代理 ${proxyUrl} 测试失败 - 跳过`));
                     continue;
                 }
 
@@ -175,7 +174,7 @@ async function makeRequest(method, endpoint, data) {
                     ? new HttpProxyAgent(proxyUrl)
                     : new SocksProxyAgent(proxyUrl);
             } catch (e) {
-                console.log(chalk.red(`❌ Proxy error: ${e.message}`));
+                console.log(chalk.red(`❌ 代理错误: ${e.message}`));
                 continue;
             }
         }
@@ -200,7 +199,7 @@ async function makeRequest(method, endpoint, data) {
             return response.data;
         } catch (error) {
             if (retries === MAX_RETRIES) {
-                throw new Error(`❌ Request failed after ${MAX_RETRIES} retries: ${error.message}`);
+                throw new Error(`❌ 请求在 ${MAX_RETRIES} 次重试后失败: ${error.message}`);
             }
             retries++;
         }
@@ -209,7 +208,7 @@ async function makeRequest(method, endpoint, data) {
 
 async function registerWallet(walletAddress) {
     if (!REFERRAL_CODE) {
-        throw new Error('⚠️  No referral code available');
+        throw new Error('⚠️ 无可用推荐码');
     }
 
     return makeRequest('POST', '/user', {
@@ -226,51 +225,51 @@ async function startNode(walletAddress) {
 }
 
 // ======================
-// Main Process (Fixed)
+// 主流程（已修复）
 // ======================
 async function main() {
     try {
         await printBanner();
         
-        startSpinner('Initializing system');
+        startSpinner('初始化系统');
         await new Promise(resolve => setTimeout(resolve, 1500));
         stopSpinner();
         initialize();
 
-        // Fixed input handling
-        const count = parseInt(readline.question('🌟 ' + chalk.yellow('Enter number of wallets to create: ')));
+        // 修复输入处理
+        const count = parseInt(readline.question('🌟 ' + chalk.yellow('请输入要创建的钱包数量: ')));
 
         if (isNaN(count) || count <= 0) {
-            console.log(chalk.red('❌ Invalid input - please enter a positive number'));
+            console.log(chalk.red('❌ 输入无效 - 请输入一个正数'));
             return;
         }
 
         let wallets = [];
         if (fs.existsSync('wallets.json')) {
-            startSpinner('Loading existing wallets');
+            startSpinner('加载已有钱包');
             wallets = JSON.parse(fs.readFileSync('wallets.json', 'utf-8'));
             stopSpinner();
-            console.log(chalk.green(`✅ Loaded ${chalk.yellow(wallets.length)} existing wallets`));
+            console.log(chalk.green(`✅ 已加载 ${chalk.yellow(wallets.length)} 个已有钱包`));
         }
 
         for (let i = 0; i < count; i++) {
-            startSpinner(`Creating wallet ${i + 1}/${count}`);
+            startSpinner(`创建钱包 ${i + 1}/${count}`);
             const wallet = generateWallet();
             stopSpinner();
             
             const shortAddress = `${wallet.address.slice(0, 6)}...${wallet.address.slice(-4)}`;
-            console.log(chalk.blue(`\n🔄 Processing wallet ${i + 1}/${count} (${shortAddress})`));
+            console.log(chalk.blue(`\n🔄 处理钱包 ${i + 1}/${count} (${shortAddress})`));
 
             try {
-                startSpinner('Registering wallet');
+                startSpinner('注册钱包');
                 const regResult = await registerWallet(wallet.address);
                 stopSpinner();
-                console.log(chalk.green('✅ Registration successful ') + chalk.greenBright('✓'));
+                console.log(chalk.green('✅ 注册成功 ') + chalk.greenBright('✓'));
 
-                startSpinner('Activating node');
+                startSpinner('激活节点');
                 const nodeResult = await startNode(wallet.address);
                 stopSpinner();
-                console.log(chalk.green('✅ Node activated ') + chalk.greenBright('✓'));
+                console.log(chalk.green('✅ 节点已激活 ') + chalk.greenBright('✓'));
 
                 wallets.push({
                     address: wallet.address,
@@ -278,10 +277,10 @@ async function main() {
                     createdAt: new Date().toISOString()
                 });
                 
-                startSpinner('Saving wallet');
+                startSpinner('保存钱包');
                 fs.writeFileSync('wallets.json', JSON.stringify(wallets, null, 2));
                 stopSpinner();
-                console.log(chalk.green('✅ Wallet saved ') + chalk.greenBright('✓'));
+                console.log(chalk.green('✅ 钱包已保存 ') + chalk.greenBright('✓'));
 
                 stats.success++;
             } catch (error) {
@@ -291,29 +290,29 @@ async function main() {
             }
 
             stats.total++;
-            console.log(chalk.yellow(`📊 Progress: ${stats.success} succeeded, ${stats.failed} failed\n`));
+            console.log(chalk.yellow(`📊 进度: ${stats.success} 个成功, ${stats.failed} 个失败\n`));
         }
 
-        // Final animation
+        // 最终动画
         console.log(chalk.hex('#FF69B4')(`
         🌟🎉🌟🎉🌟🎉🌟🎉🌟🎉🌟🎉🌟🎉🌟🎉🌟
         🎉                                 🎉
-        🌟      Process Completed!         🌟
+        🌟         进程完成！             🌟
         🎉                                 🎉
         🌟🎉🌟🎉🌟🎉🌟🎉🌟🎉🌟🎉🌟🎉🌟🎉🌟
         `));
         
-        console.log(chalk.blue(`📊 Final results:
-        Total wallets: ${stats.total}
-        ✅ Successful: ${stats.success}
-        ❌ Failed: ${stats.failed}
-        📁 Saved wallets: ${wallets.length}`));
+        console.log(chalk.blue(`📊 最终结果:
+        总钱包数: ${stats.total}
+        ✅ 成功: ${stats.success}
+        ❌ 失败: ${stats.failed}
+        📁 已保存钱包: ${wallets.length}`));
     } catch (error) {
-        console.log(chalk.red(`❌ Critical error: ${error.message}`));
+        console.log(chalk.red(`❌ 严重错误: ${error.message}`));
     }
 }
 
 // ======================
-// Start Application
+// 启动应用程序
 // ======================
 main();
