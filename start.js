@@ -1,194 +1,160 @@
-const fs = require('fs');
-const axios = require('axios');
-const { HttpsProxyAgent } = require('https-proxy-agent');
-const colors = require('colors');
+import fs from 'fs/promises';
+import axios from 'axios';
+import cfonts from 'cfonts';
+import chalk from 'chalk';
+import ora from 'ora';
+import readline from 'readline';
+import { Wallet } from 'ethers';
+import { HttpsProxyAgent } from 'https-proxy-agent';
+import { SocksProxyAgent } from 'socks-proxy-agent';
 
-const BASE_URL = 'https://mscore.onrender.com';
-
-// 从 `wallets.json` 加载钱包
-let wallets = [];
-if (fs.existsSync('wallets.json')) {
-    try {
-        const walletData = JSON.parse(fs.readFileSync('wallets.json', 'utf-8'));
-        wallets = walletData.map(wallet => wallet.address.trim()).filter(address => address.length > 0);
-    } catch (error) {
-        console.log(colors.red(`❌ 读取 wallets.json 时出错: ${error.message}`));
-        process.exit(1);
-    }
-} else {
-    console.log(colors.red('❌ 未找到 wallets.json！请添加钱包数据。'));
-    process.exit(1);
+function print_banner() {
+  console.clear();
+  console.log(chalk.cyan(`
+╔════════════════════════════════════════════════════╗
+║                                                    ║
+║               ╔═╗╔═╦╗─╔╦═══╦═══╦═══╦═══╗          ║
+║               ╚╗╚╝╔╣║─║║╔══╣╔═╗║╔═╗║╔═╗║          ║
+║               ─╚╗╔╝║║─║║╚══╣║─╚╣║─║║║─║║          ║
+║               ─╔╝╚╗║║─║║╔══╣║╔═╣╚═╝║║─║║          ║
+║               ╔╝╔╗╚╣╚═╝║╚══╣╚╩═║╔═╗║╚═╝║          ║
+║               ╚═╝╚═╩═══╩═══╩═══╩╝─╚╩═══╝          ║
+║         原作者 GitHub: https://github.com/Kazuha787║
+║               关注tg频道：t.me/xuegaoz              ║
+║               我的gihub：github.com/Gzgod          ║
+║               我的推特：推特雪糕战神@Xuegaogx       ║
+║                                                    ║
+╚════════════════════════════════════════════════════╝
+`));
 }
 
-// 从 `proxy.txt` 加载代理
-let proxies = [];
-if (fs.existsSync('proxy.txt')) {
-    const proxyLines = fs.readFileSync('proxy.txt', 'utf-8')
-        .split('\n')
-        .map(line => line.trim())
-        .filter(line => line.length > 0);
-
-    proxies = proxyLines.map(proxy => {
-        try {
-            return new HttpsProxyAgent(proxy);
-        } catch (e) {
-            console.log(colors.red(`⚠️ 无效代理: ${proxy} - ${e.message}`));
-            return null;
-        }
-    }).filter(proxy => proxy !== null);
+function delay(seconds) {
+  return new Promise(resolve => setTimeout(resolve, seconds * 1000));
 }
 
-// 清理字符串中的控制字符
-function sanitizeString(str) {
-    if (typeof str !== 'string') return str;
-    return str.replace(/[\n\r\t\f\b]/g, ''); // 移除换行符、回车符、制表符、换页符、退格符
+function centerText(text, color = 'greenBright') {
+  const terminalWidth = process.stdout.columns || 80;
+  const textLength = text.length;
+  const padding = Math.max(0, Math.floor((terminalWidth - textLength) / 2));
+  return ' '.repeat(padding) + chalk[color](text);
 }
 
-// 从 `log.json` 加载日志
-let logs = [];
-if (fs.existsSync('log.json')) {
-    try {
-        const rawData = fs.readFileSync('log.json', 'utf-8');
-        logs = JSON.parse(rawData);
-        // 清理 logs 中的字符串字段
-        logs = logs.map(log => ({
-            wallet: sanitizeString(log.wallet),
-            success: log.success,
-            timestamp: sanitizeString(log.timestamp)
-        }));
-    } catch (error) {
-        console.log(colors.red(`❌ 读取 log.json 时出错: ${error.message}`));
-        console.log(colors.yellow('📄 log.json 内容:'));
-        console.log(rawData);
-        console.log(colors.yellow('⚠️ 将重置 log.json 文件...'));
-        logs = [];
-        fs.writeFileSync('log.json', JSON.stringify(logs, null, 2));
-    }
+const userAgents = [
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.1 Safari/605.1.15',
+  'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Firefox/102.0'
+];
+
+function getRandomUserAgent() {
+  return userAgents[Math.floor(Math.random() * userAgents.length)];
 }
 
-// 启动节点的功能
-async function startNode(walletAddress, proxy) {
-    const sanitizedAddress = sanitizeString(walletAddress);
-    const data = {
-        wallet: sanitizedAddress,
-        startTime: Date.now()
-    };
-
-    try {
-        const config = {
-            method: 'put',
-            url: `${BASE_URL}/user/update-start-time`,
-            data,
-            httpAgent: proxy,
-            httpsAgent: proxy,
-            timeout: 15000
-        };
-
-        const res = await axios(config);
-        return res.data;
-    } catch (error) {
-        console.log(colors.red(`❌ 更新 ${sanitizedAddress} 的 startTime 时出错: ${error.message}`));
-        return null;
-    }
+function getHeaders() {
+  return {
+    'User-Agent': getRandomUserAgent(),
+    'Accept': 'application/json, text/plain, */*',
+    'Content-Type': 'application/json',
+    'origin': 'https://monadscore.xyz',
+    'referer': 'https://monadscore.xyz/'
+  };
 }
 
-// 检查节点今天是否已更新
-function isNodeUpdated(walletAddress) {
-    const sanitizedAddress = sanitizeString(walletAddress);
-    const today = new Date().toISOString().slice(0, 10); 
-    return logs.some(log => log.wallet === sanitizedAddress && log.success && log.timestamp.startsWith(today));
+function getAxiosConfig(proxy) {
+  const config = {
+    headers: getHeaders(),
+    timeout: 60000
+  };
+  if (proxy) {
+    config.httpsAgent = newAgent(proxy);
+  }
+  return config;
 }
 
-// 处理钱包
-async function processWallets() {
-    let hasUpdated = false;
-
-    for (const walletAddress of wallets) {
-        const sanitizedAddress = sanitizeString(walletAddress);
-        if (isNodeUpdated(sanitizedAddress)) {
-            console.log(colors.yellow(`⏭️ ${sanitizedAddress} 的节点今天已更新，跳过。`));
-            continue;
-        }
-
-        const proxy = proxies[Math.floor(Math.random() * proxies.length)];
-        const result = await startNode(sanitizedAddress, proxy);
-        if (result?.success) {
-            console.log(colors.green(`✔️ 成功更新 ${sanitizedAddress} 的 startTime！`));
-
-            logs.push({
-                wallet: sanitizedAddress,
-                success: true,
-                timestamp: new Date().toISOString()
-            });
-
-            // 备份 log.json
-            if (fs.existsSync('log.json')) {
-                fs.copyFileSync('log.json', 'log.json.bak');
-            }
-            fs.writeFileSync('log.json', JSON.stringify(logs, null, 2));
-            hasUpdated = true;
-        } else {
-            console.log(colors.red(`❌ 无法更新 ${sanitizedAddress} 的 startTime。`));
-
-            logs.push({
-                wallet: sanitizedAddress,
-                success: false,
-                timestamp: new Date().toISOString()
-            });
-
-            // 备份 log.json
-            if (fs.existsSync('log.json')) {
-                fs.copyFileSync('log.json', 'log.json.bak');
-            }
-            fs.writeFileSync('log.json', JSON.stringify(logs, null, 2));
-            hasUpdated = true;
-        }
-
-        await new Promise(resolve => setTimeout(resolve, 10000));
-    }
-
-    return hasUpdated;
+function newAgent(proxy) {
+  if (proxy.startsWith('http://')) {
+    return new HttpsProxyAgent(proxy);
+  } else if (proxy.startsWith('socks4://') || proxy.startsWith('socks5://')) {
+    return new SocksProxyAgent(proxy);
+  } else {
+    console.log(chalk.red(`❌ 不支持的代理类型: ${proxy}`));
+    return null;
+  }
 }
 
-// 安排每天早上7点运行
-async function startNodeDaily() {
-    const now = new Date();
-    let targetTime = new Date(now.setHours(7, 0, 0, 0)); 
-    if (now.getHours() >= 7) {
-        targetTime.setDate(targetTime.getDate() + 1);
-    }
-
-    const delay = targetTime - Date.now();
-    console.log(colors.cyan(`⏳ 等待至 ${targetTime.toLocaleTimeString()} 以重新启动...`));
-
-    setTimeout(async () => {
-        const hasUpdated = await processWallets();
-
-        if (hasUpdated) {
-            const extraDelay = getRandomDelay() * 60 * 1000;
-            console.log(colors.cyan(`⏳ 在重新启动前额外等待 ${extraDelay / 60000} 分钟...`));
-
-            setTimeout(startNodeDaily, extraDelay);
-        }
-    }, delay);
+async function readAccounts() {
+  try {
+    const data = await fs.readFile('accounts.json', 'utf-8');
+    return JSON.parse(data);
+  } catch (error) {
+    console.error(chalk.red(`⚠️ 读取 accounts.json 时出错: ${error.message}`));
+    return [];
+  }
 }
 
-// 获取2-10分钟的随机延迟
-function getRandomDelay() {
-    return Math.floor(Math.random() * (10 - 2 + 1)) + 2;
+async function claimTask(walletAddress, taskId, proxy) {
+  const url = 'https://mscore.onrender.com/user/claim-task';
+  const payload = { wallet: walletAddress, taskId };
+
+  try {
+    const response = await axios.post(url, payload, getAxiosConfig(proxy));
+    return response.data && response.data.message
+      ? response.data.message
+      : '✅ 任务领取成功，但服务器未返回消息。';
+  } catch (error) {
+    return `❌ 任务 ${taskId} 失败: ${error.response?.data?.message || error.message}`;
+  }
 }
 
-// 先运行一次脚本，然后进行调度
-async function runOnce() {
-    const hasUpdated = await processWallets();
+async function processAccount(account, index, total, proxy) {
+  const { walletAddress, privateKey } = account;
+  console.log(`\n`);
+  console.log(chalk.cyanBright('╔' + '═'.repeat(78) + '╗'));
+  console.log(chalk.cyanBright(`║ ${chalk.bold.whiteBright(`处理账户 ${index + 1}/${total}`)} ${' '.repeat(42 - (index + 1).toString().length - total.toString().length)}║`));
+  console.log(chalk.cyanBright(`║ 钱包: ${chalk.yellowBright(walletAddress)} ${' '.repeat(42 - walletAddress.length)}║`));
+  console.log(chalk.cyanBright('╚' + '═'.repeat(78) + '╝'));
 
-    if (hasUpdated) {
-        await startNodeDaily();
+  let wallet;
+  try {
+    wallet = new Wallet(privateKey);
+  } catch (error) {
+    console.error(chalk.red(`❌ 创建钱包时出错: ${error.message}`));
+    return;
+  }
+
+  const tasks = ['task003', 'task002', 'task001'];
+  for (let i = 0; i < tasks.length; i++) {
+    const spinnerTask = ora({ text: `⏳ 正在领取任务 ${i + 1}/3 ...`, spinner: 'dots2', color: 'cyan' }).start();
+    const msg = await claimTask(walletAddress, tasks[i], proxy);
+    if (msg.toLowerCase().includes('successfully') || msg.toLowerCase().includes('berhasil')) {
+      spinnerTask.succeed(chalk.greenBright(` ✅ 任务 ${i + 1}/3 已领取: ${msg}`));
     } else {
-        console.log(colors.cyan("⏳ 没有需要处理的钱包。等待下一个周期..."));
-        await startNodeDaily();
+      spinnerTask.fail(chalk.red(` ❌ 任务 ${i + 1}/3 失败: ${msg}`));
     }
+  }
 }
 
-// 启动脚本
-runOnce();
+async function run() {
+  print_banner();
+  console.log(centerText("=== 🔥 在 GitHub 上关注我: @Gzgod 🔥 ===\n", 'cyanBright'));
+
+  const accounts = await readAccounts();
+  if (accounts.length === 0) {
+    console.log(chalk.red('⚠️ 在 accounts.json 中未找到账户。'));
+    return;
+  }
+
+  for (let i = 0; i < accounts.length; i++) {
+    try {
+      await processAccount(accounts[i], i, accounts.length, null);
+    } catch (error) {
+      console.error(chalk.red(`⚠️ 处理账户 ${i + 1} 时出错: ${error.message}`));
+    }
+  }
+
+  console.log(chalk.magentaBright('\n🚀 所有任务完成！等待24小时后重试... ⏳'));
+  await delay(86400);
+  run();
+}
+
+run();
