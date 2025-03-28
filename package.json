@@ -1,35 +1,20 @@
 {
-    "name": "monadscore-auto-bot",
-    "version": "1.0.0",
-    "description": "Automated bot for generating wallets and registering on Monadscore",
-    "main": "index.js",
-    "scripts": {
-        "start": "node index.js"
-    },
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/airdropinsiders/Monadscore-Auto-Bot.git"
-    },
-    "keywords": [
-        "airdrop",
-        "crypto",
-        "wallet",
-        "monadscore"
-    ],
-    "author": "AirdropInsiders",
-    "license": "MIT",
-    "dependencies": {
-        "axios": "^1.8.4",
-        "blessed": "^0.1.81",
-        "blessed-contrib": "^4.11.0",
-        "chalk": "^4.1.2",
-        "ethers": "^5.8.0",
-        "http-proxy-agent": "^7.0.2",
-        "ora": "^8.2.0",
-        "readline-sync": "^1.4.10",
-        "socks-proxy-agent": "^8.0.5"
-    },
-    "engines": {
-        "node": ">=16.0.0"
-    }
+  "name": "Kazuha787",
+  "version": "1.0.0",
+  "description": "Auto REFF & Auto Run Node MondaScore.",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "axios": "^1.4.0",
+    "cfonts": "^3.2.0",
+    "chalk": "^4.1.2",
+    "ethers": "^5.7.0",
+    "https-proxy-agent": "^7.0.6",
+    "inquirer": "^8.2.4",
+    "ora": "^6.1.2",
+    "socks-proxy-agent": "^8.0.5"
+  }
 }
