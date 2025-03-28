@@ -22,7 +22,7 @@ function printBanner() {
 ║         原作者 GitHub: https://github.com/Kazuha787║
 ║               关注tg频道：t.me/xuegaoz              ║
 ║               我的gihub：github.com/Gzgod          ║
-║               我的推特：推特雪糕战神@Hy78516012       ║
+║               我的推特：推特雪糕战神@Xuegaogx       ║
 ║                                                    ║
 ╚════════════════════════════════════════════════════╝
 `));
