@@ -38,16 +38,39 @@ if (fs.existsSync('proxy.txt')) {
     }).filter(proxy => proxy !== null);
 }
 
+// 清理字符串中的控制字符
+function sanitizeString(str) {
+    if (typeof str !== 'string') return str;
+    return str.replace(/[\n\r\t\f\b]/g, ''); // 移除换行符、回车符、制表符、换页符、退格符
+}
+
 // 从 `log.json` 加载日志
 let logs = [];
 if (fs.existsSync('log.json')) {
-    logs = JSON.parse(fs.readFileSync('log.json', 'utf-8'));
+    try {
+        const rawData = fs.readFileSync('log.json', 'utf-8');
+        logs = JSON.parse(rawData);
+        // 清理 logs 中的字符串字段
+        logs = logs.map(log => ({
+            wallet: sanitizeString(log.wallet),
+            success: log.success,
+            timestamp: sanitizeString(log.timestamp)
+        }));
+    } catch (error) {
+        console.log(colors.red(`❌ 读取 log.json 时出错: ${error.message}`));
+        console.log(colors.yellow('📄 log.json 内容:'));
+        console.log(rawData);
+        console.log(colors.yellow('⚠️ 将重置 log.json 文件...'));
+        logs = [];
+        fs.writeFileSync('log.json', JSON.stringify(logs, null, 2));
+    }
 }
 
 // 启动节点的功能
 async function startNode(walletAddress, proxy) {
+    const sanitizedAddress = sanitizeString(walletAddress);
     const data = {
-        wallet: walletAddress,
+        wallet: sanitizedAddress,
         startTime: Date.now()
     };
 
@@ -64,15 +87,16 @@ async function startNode(walletAddress, proxy) {
         const res = await axios(config);
         return res.data;
     } catch (error) {
-        console.log(colors.red(`❌ 更新 ${walletAddress} 的 startTime 时出错: ${error.message}`));
+        console.log(colors.red(`❌ 更新 ${sanitizedAddress} 的 startTime 时出错: ${error.message}`));
         return null;
     }
 }
 
 // 检查节点今天是否已更新
 function isNodeUpdated(walletAddress) {
+    const sanitizedAddress = sanitizeString(walletAddress);
     const today = new Date().toISOString().slice(0, 10); 
-    return logs.some(log => log.wallet === walletAddress && log.success && log.timestamp.startsWith(today));
+    return logs.some(log => log.wallet === sanitizedAddress && log.success && log.timestamp.startsWith(today));
 }
 
 // 处理钱包
@@ -80,33 +104,42 @@ async function processWallets() {
     let hasUpdated = false;
 
     for (const walletAddress of wallets) {
-        if (isNodeUpdated(walletAddress)) {
-            console.log(colors.yellow(`⏭️ ${walletAddress} 的节点今天已更新，跳过。`));
+        const sanitizedAddress = sanitizeString(walletAddress);
+        if (isNodeUpdated(sanitizedAddress)) {
+            console.log(colors.yellow(`⏭️ ${sanitizedAddress} 的节点今天已更新，跳过。`));
             continue;
         }
 
         const proxy = proxies[Math.floor(Math.random() * proxies.length)];
-        const result = await startNode(walletAddress, proxy);
+        const result = await startNode(sanitizedAddress, proxy);
         if (result?.success) {
-            console.log(colors.green(`✔️ 成功更新 ${walletAddress} 的 startTime！`));
+            console.log(colors.green(`✔️ 成功更新 ${sanitizedAddress} 的 startTime！`));
 
             logs.push({
-                wallet: walletAddress,
+                wallet: sanitizedAddress,
                 success: true,
                 timestamp: new Date().toISOString()
             });
 
+            // 备份 log.json
+            if (fs.existsSync('log.json')) {
+                fs.copyFileSync('log.json', 'log.json.bak');
+            }
             fs.writeFileSync('log.json', JSON.stringify(logs, null, 2));
             hasUpdated = true;
         } else {
-            console.log(colors.red(`❌ 无法更新 ${walletAddress} 的 startTime。`));
+            console.log(colors.red(`❌ 无法更新 ${sanitizedAddress} 的 startTime。`));
 
             logs.push({
-                wallet: walletAddress,
+                wallet: sanitizedAddress,
                 success: false,
                 timestamp: new Date().toISOString()
             });
 
+            // 备份 log.json
+            if (fs.existsSync('log.json')) {
+                fs.copyFileSync('log.json', 'log.json.bak');
+            }
             fs.writeFileSync('log.json', JSON.stringify(logs, null, 2));
             hasUpdated = true;
         }
