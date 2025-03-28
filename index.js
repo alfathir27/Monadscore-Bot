@@ -1,49 +1,16 @@
-const fs = require('fs');
-const ethers = require('ethers');
-const axios = require('axios');
-const readline = require('readline-sync');
-const { HttpProxyAgent } = require('http-proxy-agent');
-const { SocksProxyAgent } = require('socks-proxy-agent');
-const chalk = require('chalk');
+import inquirer from 'inquirer';
+import ora from 'ora';
+import chalk from 'chalk';
+import fs from 'fs';
+import axios from 'axios';
+import pkg from 'https-proxy-agent';
+const { HttpsProxyAgent } = pkg;
+import { ethers } from 'ethers';
 
-// ======================
-// 动画工具
-// ======================
-const spinnerFrames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
-let spinnerInterval;
-
-function startSpinner(text) {
-    let i = 0;
-    spinnerInterval = setInterval(() => {
-        process.stdout.write(`\r${chalk.cyan(spinnerFrames[i])} ${text}`);
-        i = (i + 1) % spinnerFrames.length;
-    }, 100);
-}
-
-function stopSpinner() {
-    clearInterval(spinnerInterval);
-    process.stdout.write('\r');
-}
-
-async function typeEffect(text, speed = 2) {
-    return new Promise(resolve => {
-        let i = 0;
-        const typing = setInterval(() => {
-            process.stdout.write(chalk.yellow(text[i]));
-            if (++i === text.length) {
-                clearInterval(typing);
-                console.log();
-                resolve();
-            }
-        }, speed);
-    });
-}
-
-// ======================
-// 动画横幅
-// ======================
-async function printBanner() {
-    const bannerText = chalk.cyan(`
+// 函数：显示 MonadScore 横幅
+function printBanner() {
+  console.clear();
+  console.log(chalk.cyan(`
 ╔════════════════════════════════════════════════════╗
 ║                                                    ║
 ║               ╔═╗╔═╦╗─╔╦═══╦═══╦═══╦═══╗          ║
@@ -58,261 +25,165 @@ async function printBanner() {
 ║               我的推特：推特雪糕战神@Hy78516012       ║
 ║                                                    ║
 ╚════════════════════════════════════════════════════╝
-`);
-
-    console.clear();
-    for (const line of bannerText.split('\n')) {
-        await typeEffect(line);
-    }
+`));
 }
 
-// ======================
-// 核心配置
-// ======================
-const BASE_URL = 'https://mscore.onrender.com';
-const MAX_RETRIES = 3;
-let REFERRAL_CODE = '';
-let proxies = [];
-const stats = { total: 0, success: 0, failed: 0 };
-
-// ======================
-// 初始化设置
-// ======================
-function initialize() {
-    // 加载推荐码
-    try {
-        if (fs.existsSync('code.txt')) {
-            REFERRAL_CODE = fs.readFileSync('code.txt', 'utf-8').trim();
-            console.log(chalk.green(`✅ 已加载推荐码: ${chalk.yellow(REFERRAL_CODE)}`));
-        } else {
-            console.log(chalk.yellow('⚠️ 未找到 code.txt - 将不使用推荐码继续运行'));
-        }
-    } catch (error) {
-        console.log(chalk.red(`❌ 读取 code.txt 时出错: ${error.message}`));
-    }
-
-    // 加载代理
-    if (fs.existsSync('proxies.txt')) {
-        proxies = fs.readFileSync('proxies.txt', 'utf-8')
-            .split('\n')
-            .map(line => line.trim())
-            .filter(line => line.length > 0)
-            .map(proxy => {
-                try {
-                    const proxyRegex = /^(http|socks4|socks5):\/\/(?:([^:]+):([^@]+)@)?([^:]+):(\d+)$/;
-                    const match = proxy.match(proxyRegex);
-                    if (!match) throw new Error('代理格式无效');
-
-                    const [, type, username, password, host, port] = match;
-                    const encodedUsername = encodeURIComponent(username || '');
-                    const encodedPassword = encodeURIComponent(password || '');
-                    return `${type}://${encodedUsername}:${encodedPassword}@${host}:${port}`;
-                } catch (e) {
-                    console.log(chalk.red(`⏭️ 跳过无效代理: ${proxy} - ${e.message}`));
-                    return null;
-                }
-            })
-            .filter(proxy => proxy !== null);
-
-        console.log(chalk.green(`✅ 已加载 ${chalk.yellow(proxies.length)} 个有效代理`));
-    } else {
-        console.log(chalk.yellow('⚠️ 未找到 proxies.txt - 将不使用代理继续运行'));
-    }
+// 函数：创建视觉上吸引人的分隔线
+function divider(text, color = "yellowBright") {
+  console.log(chalk[color](`\n⚡━━━━━━━━━━ ${text} ━━━━━━━━━━⚡\n`));
 }
 
-// ======================
-// 代理管理
-// ======================
-function getRandomProxy() {
-    if (proxies.length === 0) return null;
-    return proxies[Math.floor(Math.random() * proxies.length)];
+// 函数：动态居中文本
+function centerText(text, color = "cyanBright") {
+  const width = process.stdout.columns || 80;
+  const padding = Math.max(0, Math.floor((width - text.length) / 2));
+  return " ".repeat(padding) + chalk[color](text);
 }
 
-async function testProxy(proxyUrl) {
-    try {
-        const agent = proxyUrl.startsWith('http') 
-            ? new HttpProxyAgent(proxyUrl)
-            : new SocksProxyAgent(proxyUrl);
-
-        await axios.get('https://api.ipify.org', {
-            httpAgent: agent,
-            httpsAgent: agent,
-            timeout: 5000
-        });
-        return true;
-    } catch (e) {
-        return false;
-    }
+// 函数：模拟打字效果
+async function typeEffect(text, color = "magentaBright") {
+  for (const char of text) {
+    process.stdout.write(chalk[color](char));
+    await new Promise(resolve => setTimeout(resolve, 10));
+  }
+  console.log();
 }
 
-// ======================
-// 核心功能
-// ======================
-function generateWallet() {
-    return ethers.Wallet.createRandom();
+printBanner();
+console.log(centerText("=== 📢 在 GitHub 上关注我: @Gzgod 📢 ===\n", "blueBright"));
+divider("MONADSCORE 自动注册");
+
+// 函数：生成随机请求头
+function generateRandomHeaders() {
+  const userAgents = [
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/115.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Version/14.0.3 Safari/605.1.15',
+    'Mozilla/5.0 (Linux; Android 10; SM-G970F) AppleWebKit/537.36 Chrome/115.0.0.0 Mobile Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/109.0'
+  ];
+  return {
+    'User-Agent': userAgents[Math.floor(Math.random() * userAgents.length)],
+    'Accept': 'application/json, text/plain, */*',
+    'Accept-Language': 'zh-CN,zh;q=0.9'
+  };
 }
 
-async function makeRequest(method, endpoint, data) {
-    let retries = 0;
-    let usedProxies = new Set();
+// 函数：延迟
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-    while (retries <= MAX_RETRIES) {
-        const proxyUrl = getRandomProxy();
-        let agent = null;
-
-        if (proxyUrl) {
-            if (usedProxies.has(proxyUrl)) continue;
-            usedProxies.add(proxyUrl);
-
-            try {
-                if (!await testProxy(proxyUrl)) {
-                    console.log(chalk.red(`❌ 代理 ${proxyUrl} 测试失败 - 跳过`));
-                    continue;
-                }
-
-                agent = proxyUrl.startsWith('http') 
-                    ? new HttpProxyAgent(proxyUrl)
-                    : new SocksProxyAgent(proxyUrl);
-            } catch (e) {
-                console.log(chalk.red(`❌ 代理错误: ${e.message}`));
-                continue;
-            }
-        }
-
-        try {
-            const response = await axios({
-                method,
-                url: `${BASE_URL}${endpoint}`,
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36',
-                    'Accept': 'application/json, text/plain, */*',
-                    'Content-Type': 'application/json',
-                    'origin': 'https://monadscore.xyz',
-                    'referer': 'https://monadscore.xyz/'
-                },
-                data,
-                httpAgent: agent,
-                httpsAgent: agent,
-                timeout: 15000
-            });
-
-            return response.data;
-        } catch (error) {
-            if (retries === MAX_RETRIES) {
-                throw new Error(`❌ 请求在 ${MAX_RETRIES} 次重试后失败: ${error.message}`);
-            }
-            retries++;
-        }
-    }
+// 倒计时动画
+async function countdown(ms) {
+  const seconds = Math.floor(ms / 1000);
+  for (let i = seconds; i > 0; i--) {
+    process.stdout.write(chalk.grey(`\r⏳ 等待 ${i} 秒... `));
+    await delay(1000);
+  }
+  process.stdout.write('\r' + ' '.repeat(50) + '\r');
 }
 
-async function registerWallet(walletAddress) {
-    if (!REFERRAL_CODE) {
-        throw new Error('⚠️ 无可用推荐码');
-    }
-
-    return makeRequest('POST', '/user', {
-        wallet: walletAddress,
-        invite: REFERRAL_CODE
-    });
-}
-
-async function startNode(walletAddress) {
-    return makeRequest('PUT', '/user/update-start-time', {
-        wallet: walletAddress,
-        startTime: Date.now()
-    });
-}
-
-// ======================
-// 主流程（已修复）
-// ======================
 async function main() {
-    try {
-        await printBanner();
-        
-        startSpinner('初始化系统');
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        stopSpinner();
-        initialize();
-
-        // 修复输入处理
-        const count = parseInt(readline.question('🌟 ' + chalk.yellow('请输入要创建的钱包数量: ')));
-
-        if (isNaN(count) || count <= 0) {
-            console.log(chalk.red('❌ 输入无效 - 请输入一个正数'));
-            return;
-        }
-
-        let wallets = [];
-        if (fs.existsSync('wallets.json')) {
-            startSpinner('加载已有钱包');
-            wallets = JSON.parse(fs.readFileSync('wallets.json', 'utf-8'));
-            stopSpinner();
-            console.log(chalk.green(`✅ 已加载 ${chalk.yellow(wallets.length)} 个已有钱包`));
-        }
-
-        for (let i = 0; i < count; i++) {
-            startSpinner(`创建钱包 ${i + 1}/${count}`);
-            const wallet = generateWallet();
-            stopSpinner();
-            
-            const shortAddress = `${wallet.address.slice(0, 6)}...${wallet.address.slice(-4)}`;
-            console.log(chalk.blue(`\n🔄 处理钱包 ${i + 1}/${count} (${shortAddress})`));
-
-            try {
-                startSpinner('注册钱包');
-                const regResult = await registerWallet(wallet.address);
-                stopSpinner();
-                console.log(chalk.green('✅ 注册成功 ') + chalk.greenBright('✓'));
-
-                startSpinner('激活节点');
-                const nodeResult = await startNode(wallet.address);
-                stopSpinner();
-                console.log(chalk.green('✅ 节点已激活 ') + chalk.greenBright('✓'));
-
-                wallets.push({
-                    address: wallet.address,
-                    privateKey: wallet.privateKey,
-                    createdAt: new Date().toISOString()
-                });
-                
-                startSpinner('保存钱包');
-                fs.writeFileSync('wallets.json', JSON.stringify(wallets, null, 2));
-                stopSpinner();
-                console.log(chalk.green('✅ 钱包已保存 ') + chalk.greenBright('✓'));
-
-                stats.success++;
-            } catch (error) {
-                stopSpinner();
-                console.log(chalk.red(`❌ ${error.message} `) + chalk.redBright('✗'));
-                stats.failed++;
-            }
-
-            stats.total++;
-            console.log(chalk.yellow(`📊 进度: ${stats.success} 个成功, ${stats.failed} 个失败\n`));
-        }
-
-        // 最终动画
-        console.log(chalk.hex('#FF69B4')(`
-        🌟🎉🌟🎉🌟🎉🌟🎉🌟🎉🌟🎉🌟🎉🌟🎉🌟
-        🎉                                 🎉
-        🌟         进程完成！             🌟
-        🎉                                 🎉
-        🌟🎉🌟🎉🌟🎉🌟🎉🌟🎉🌟🎉🌟🎉🌟🎉🌟
-        `));
-        
-        console.log(chalk.blue(`📊 最终结果:
-        总钱包数: ${stats.total}
-        ✅ 成功: ${stats.success}
-        ❌ 失败: ${stats.failed}
-        📁 已保存钱包: ${wallets.length}`));
-    } catch (error) {
-        console.log(chalk.red(`❌ 严重错误: ${error.message}`));
+  const { useProxy } = await inquirer.prompt([
+    {
+      type: 'confirm',
+      name: 'useProxy',
+      message: chalk.magenta('🌐 是否使用代理？'),
+      default: false,
     }
+  ]);
+
+  let proxyList = [];
+  let proxyMode = null;
+  if (useProxy) {
+    const proxyAnswer = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'proxyType',
+        message: chalk.magenta('🔄 选择代理类型：'),
+        choices: ['轮换', '静态'],
+      }
+    ]);
+    proxyMode = proxyAnswer.proxyType === '轮换' ? 'Rotating' : 'Static';
+    try {
+      const proxyData = fs.readFileSync('proxy.txt', 'utf8');
+      proxyList = proxyData.split('\n').map(line => line.trim()).filter(Boolean);
+      console.log(chalk.greenBright(`✅ 已加载 ${proxyList.length} 个代理。\n`));
+    } catch (err) {
+      console.log(chalk.yellow('⚠️ 未找到 proxy.txt 文件，将不使用代理继续。\n'));
+    }
+  }
+
+  const { count } = await inquirer.prompt([
+    {
+      type: 'input',
+      name: 'count',
+      message: chalk.magenta('🔢 输入你想要的推荐数量：'),
+      validate: value => (isNaN(value) || value <= 0) ? '❌ 输入一个大于0的有效数字！' : true
+    }
+  ]);
+
+  const { ref } = await inquirer.prompt([
+    {
+      type: 'input',
+      name: 'ref',
+      message: chalk.magenta('🔗 输入推荐码：'),
+    }
+  ]);
+
+  divider("账户创建开始");
+
+  const fileName = 'accounts.json';
+  let accounts = fs.existsSync(fileName) ? JSON.parse(fs.readFileSync(fileName, 'utf8')) : [];
+
+  let successCount = 0;
+  let failCount = 0;
+
+  for (let i = 0; i < count; i++) {
+    console.log(chalk.cyanBright(`\n🔥 账户 ${i + 1}/${count} 🔥`));
+
+    let accountAxiosConfig = {
+      timeout: 50000,
+      headers: generateRandomHeaders(),
+      proxy: false
+    };
+
+    if (useProxy && proxyList.length > 0) {
+      let selectedProxy = (proxyMode === 'Rotating') ? proxyList[0] : proxyList.shift();
+      if (!selectedProxy) {
+        console.error(chalk.red("❌ 静态模式下代理已用尽。"));
+        process.exit(1);
+      }
+      console.log(chalk.green(`🌍 使用代理: ${selectedProxy}`));
+      const agent = new HttpsProxyAgent(selectedProxy);
+      accountAxiosConfig.httpAgent = agent;
+      accountAxiosConfig.httpsAgent = agent;
+    }
+
+    let wallet = ethers.Wallet.createRandom();
+    let walletAddress = wallet.address;
+    console.log(chalk.greenBright(`✅ 以太坊钱包已创建: ${walletAddress}`));
+
+    const payload = { wallet: walletAddress, invite: ref };
+    const regSpinner = ora('🚀 正在发送数据到API...').start();
+
+    try {
+      await axios.post('https://mscore.onrender.com/user', payload, accountAxiosConfig);
+      regSpinner.succeed(chalk.greenBright('✅ 账户注册成功'));
+      successCount++;
+      accounts.push({ walletAddress, privateKey: wallet.privateKey });
+      fs.writeFileSync(fileName, JSON.stringify(accounts, null, 2));
+      console.log(chalk.greenBright('💾 账户数据已保存。'));
+    } catch (error) {
+      regSpinner.fail(chalk.red(`❌ ${walletAddress} 注册失败: ${error.message}`));
+      failCount++;
+    }
+
+    console.log(chalk.yellow(`\n📊 进度: ${i + 1}/${count} 个账户已注册。 (✅ 成功: ${successCount}, ❌ 失败: ${failCount})`));
+
+    if (i < count - 1) {
+      await countdown(Math.floor(Math.random() * (60000 - 30000 + 1)) + 30000);
+    }
+  }
+  divider("注册完成");
 }
 
-// ======================
-// 启动应用程序
-// ======================
 main();
